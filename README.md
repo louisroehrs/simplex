@@ -127,3 +127,66 @@ say 2 ** 3  # Outputs: 8
 - **Scalability**: From simple scripts to complex systems, Simplex adapts via optional explicit features (e.g., types, manual memory management) for pros.
 
 ---
+
+### How Lists Work
+- **Creation**: `fruits = ["apple", "banana", "orange"]` stores a Python list in `variables["fruits"]`.
+- **Indexing**: `fruits[0]` evaluates to `"apple"` by accessing the list at index 0.
+- **Integration**: Lists play nicely with existing features like loops and functions.
+
+---
+
+### Changes Made
+1. **Concurrency Syntax Handling**:
+   - Added a new `elif` block in `execute_line` for `do parallel`.
+   - Parses the block to identify tasks (lines ending with `:` like `task1:`), collecting subsequent indented lines as the task’s body.
+
+2. **Threading**:
+   - Uses Python’s `threading.Thread` to run each task concurrently.
+   - Creates a thread for each task, starts them, and then uses `join()` to wait for all to finish before moving on.
+
+3. **Task Execution**:
+   - Each task runs its lines sequentially within its thread, but tasks run in parallel relative to each other.
+
+---
+
+### How Concurrency Works
+- **Syntax**: `do parallel` followed by indented task blocks (e.g., `task1: ...`).
+- **Execution**: Each task spawns a thread, running its lines independently.
+- **Synchronization**: The main program waits for all tasks to finish, ensuring subsequent code (like `say "All tasks done"`) runs afterward.
+
+---
+
+### Limitations and Enhancements
+- **Thread Safety**: This doesn’t protect `variables` from race conditions if tasks modify shared state. We could add locks or a concurrent dictionary for safety.
+- **Error Handling**: Errors in threads aren’t propagated to the main thread yet. We could use a queue to report them.
+- **Advanced Concurrency**: Could add `async` support or task results (e.g., `task1 returns x`).
+
+---
+
+### Changes Made
+1. **Thread Safety with Lock**:
+   - Added `variables_lock = threading.Lock()` as a global lock.
+   - Wrapped all accesses to `variables` (reads and writes) with `with variables_lock:` to ensure thread-safe operations.
+
+2. **Key Areas Protected**:
+   - **Variable Assignment**: Locks when writing to `variables`.
+   - **Expression Evaluation**: Locks when reading from `variables` (e.g., fetching a variable or list element).
+   - **Function Execution**: Locks when updating `variables` with local variables and cleaning up.
+   - **Function Calls**: Locks when storing results.
+   - **Loops**: Locks when setting the loop variable.
+
+3. **Concurrency Test**:
+   - Modified the test code to include a shared `counter` variable that’s incremented by multiple tasks, demonstrating thread safety.
+
+---
+
+### How Thread Safety Works
+- **Locking**: The `variables_lock` ensures only one thread modifies or reads `variables` at a time, preventing race conditions (e.g., `task1` and `task2` overwriting each other’s `counter` updates).
+- **Granularity**: Locks are applied at the smallest necessary scope (e.g., just around `variables` access), minimizing performance impact while ensuring safety.
+
+---
+
+### Trade-offs and Enhancements
+- **Performance**: Locking every access slows things down slightly, especially with many threads. We could use finer-grained locks (e.g., per-variable) for better concurrency, but that’s more complex.
+- **Deadlocks**: This design avoids deadlocks since locks are short-lived and not nested. More complex programs might need deadlock detection.
+- **Error Reporting**: Errors in threads still don’t propagate well. We could add a thread-safe error queue.
